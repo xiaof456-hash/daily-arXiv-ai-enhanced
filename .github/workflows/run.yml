@@ -55,8 +55,9 @@ jobs:
             exit 1
         fi
         
-        echo "crawl_date=$today" >> $GITHUB_OUTPUT
+           echo "crawl_date=$today" >> $GITHUB_OUTPUT
         echo "爬取完成 / Crawling completed"
+        exit 0
         - name: Debug file structure
         run: |
         pwd
