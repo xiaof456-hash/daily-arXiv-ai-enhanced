@@ -57,6 +57,11 @@ jobs:
         
         echo "crawl_date=$today" >> $GITHUB_OUTPUT
         echo "爬取完成 / Crawling completed"
+        - name: Debug file structure
+        run: |
+        pwd
+        ls -la
+        ls -la daily_arxiv/
         
     - name: Check for duplicates
       id: dedup_check
