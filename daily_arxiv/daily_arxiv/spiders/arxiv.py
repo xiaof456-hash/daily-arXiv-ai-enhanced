@@ -5,14 +5,23 @@ import re
 
 class ArxivSpider(scrapy.Spider):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        categories = os.environ.get("CATEGORIES", "cs.CV")
-        categories = categories.split(",")
-        # 保存目标分类列表，用于后续验证
-        self.target_categories = set(map(str.strip, categories))
-        self.start_urls = [
-            f"https://arxiv.org/list/{cat}/new" for cat in self.target_categories
-        ]  # 起始URL（计算机科学领域的最新论文）
+    super().__init__(*args, **kwargs)
+    categories_env = os.environ.get("CATEGORIES", "")
+    if not categories_env:
+        # 如果环境变量为空，打印警告并使用默认值
+        self.logger.warning("CATEGORIES environment variable is not set, using default 'cs.CV'")
+        categories_env = "cs.CV"
+    else:
+        self.logger.info(f"CATEGORIES from env: {categories_env}")
+    
+    categories = [c.strip() for c in categories_env.split(",") if c.strip()]
+    self.target_categories = set(categories)
+    self.logger.info(f"Target categories: {self.target_categories}")
+    
+    self.start_urls = [
+        f"https://arxiv.org/list/{cat}/new" for cat in self.target_categories
+    ]
+    self.logger.info(f"Start URLs: {self.start_urls}")
 
     name = "arxiv"  # 爬虫名称
     allowed_domains = ["arxiv.org"]  # 允许爬取的域名
