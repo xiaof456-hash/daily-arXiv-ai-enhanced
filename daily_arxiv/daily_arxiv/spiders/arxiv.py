@@ -2,29 +2,31 @@ import scrapy
 import os
 import re
 
-
 class ArxivSpider(scrapy.Spider):
-    def __init__(self, *args, **kwargs):
-    super().__init__(*args, **kwargs)
-    categories_env = os.environ.get("CATEGORIES", "")
-    if not categories_env:
-        # 如果环境变量为空，打印警告并使用默认值
-        self.logger.warning("CATEGORIES environment variable is not set, using default 'cs.CV'")
-        categories_env = "cs.CV"
-    else:
-        self.logger.info(f"CATEGORIES from env: {categories_env}")
-    
-    categories = [c.strip() for c in categories_env.split(",") if c.strip()]
-    self.target_categories = set(categories)
-    self.logger.info(f"Target categories: {self.target_categories}")
-    
-    self.start_urls = [
-        f"https://arxiv.org/list/{cat}/new" for cat in self.target_categories
-    ]
-    self.logger.info(f"Start URLs: {self.start_urls}")
+    name = "arxiv"
+    allowed_domains = ["arxiv.org"]
 
-    name = "arxiv"  # 爬虫名称
-    allowed_domains = ["arxiv.org"]  # 允许爬取的域名
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # 调试：打印环境变量中的 CATEGORIES
+        raw_categories = os.environ.get("CATEGORIES", "")
+        self.logger.info(f"DEBUG: raw CATEGORIES from env = '{raw_categories}'")
+
+        if not raw_categories:
+            self.logger.warning("CATEGORIES environment variable is empty, using default 'cs.CV'")
+            categories = ["cs.CV"]
+        else:
+            categories = [c.strip() for c in raw_categories.split(",") if c.strip()]
+            self.logger.info(f"DEBUG: parsed categories = {categories}")
+
+        self.target_categories = set(categories)
+        self.logger.info(f"DEBUG: target_categories = {self.target_categories}")
+
+        self.start_urls = [
+            f"https://arxiv.org/list/{cat}/new" for cat in self.target_categories
+        ]
+        self.logger.info(f"DEBUG: start_urls = {self.start_urls}")
 
     def parse(self, response):
         # 提取每篇论文的信息
@@ -39,7 +41,7 @@ class ArxivSpider(scrapy.Spider):
             paper_anchor = paper.css("a[name^='item']::attr(name)").get()
             if not paper_anchor:
                 continue
-                
+
             paper_id = int(paper_anchor.split("item")[-1])
             if anchors and paper_id >= anchors[-1]:
                 continue
@@ -48,37 +50,31 @@ class ArxivSpider(scrapy.Spider):
             abstract_link = paper.css("a[title='Abstract']::attr(href)").get()
             if not abstract_link:
                 continue
-                
+
             arxiv_id = abstract_link.split("/")[-1]
-            
+
             # 获取对应的论文描述部分 (dd元素)
             paper_dd = paper.xpath("following-sibling::dd[1]")
             if not paper_dd:
                 continue
-            
+
             # 提取论文分类信息 - 在subjects部分
             subjects_text = paper_dd.css(".list-subjects .primary-subject::text").get()
             if not subjects_text:
-                # 如果找不到主分类，尝试其他方式获取分类
                 subjects_text = paper_dd.css(".list-subjects::text").get()
-            
+
             if subjects_text:
-                # 解析分类信息，通常格式如 "Computer Vision and Pattern Recognition (cs.CV)"
-                # 提取括号中的分类代码
                 categories_in_paper = re.findall(r'\(([^)]+)\)', subjects_text)
-                
-                # 检查论文分类是否与目标分类有交集
                 paper_categories = set(categories_in_paper)
                 if paper_categories.intersection(self.target_categories):
                     yield {
                         "id": arxiv_id,
-                        "categories": list(paper_categories),  # 添加分类信息用于调试
+                        "categories": list(paper_categories),
                     }
                     self.logger.info(f"Found paper {arxiv_id} with categories {paper_categories}")
                 else:
                     self.logger.debug(f"Skipped paper {arxiv_id} with categories {paper_categories} (not in target {self.target_categories})")
             else:
-                # 如果无法获取分类信息，记录警告但仍然返回论文（保持向后兼容）
                 self.logger.warning(f"Could not extract categories for paper {arxiv_id}, including anyway")
                 yield {
                     "id": arxiv_id,
