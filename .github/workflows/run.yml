@@ -177,18 +177,21 @@ jobs:
             echo "代码变更已提交"
           fi
 
-       - name: Push code changes to main branch
+      - name: Push code changes to main branch
         if: steps.dedup_check.outputs.has_new_content == 'true'
         run: |
           git config pull.rebase true
           git config rebase.autoStash true
 
-          # 硬编码仓库地址，使用 Token
+          # 设置远程 URL 并打印调试信息
           REPO_URL="https://${{ secrets.TOKEN_GITHUB }}@github.com/xiaof456-hash/daily-arXiv-ai-enhanced.git"
+          echo "Token 长度: ${#TOKEN_GITHUB}"          # 调试
+          echo "REPO_URL 长度: ${#REPO_URL}"          # 调试
+          git remote set-url origin "$REPO_URL"
 
           for i in {1..3}; do
             echo "推送代码变更尝试 $i"
-            if git push "$REPO_URL" main; then
+            if git push origin main; then
               echo "代码变更推送成功"
               break
             else
@@ -200,6 +203,7 @@ jobs:
               fi
             fi
           done
+       
       
 
       - name: Prepare data files for data branch
@@ -263,10 +267,13 @@ jobs:
           git config rebase.autoStash true
 
           REPO_URL="https://${{ secrets.TOKEN_GITHUB }}@github.com/xiaof456-hash/daily-arXiv-ai-enhanced.git"
+          echo "Token 长度: ${#TOKEN_GITHUB}"
+          echo "REPO_URL 长度: ${#REPO_URL}"
+          git remote set-url origin "$REPO_URL"
 
           for i in {1..3}; do
             echo "推送数据变更尝试 $i"
-            if git push "$REPO_URL" data; then
+            if git push origin data; then
               echo "数据变更推送成功"
               break
             else
